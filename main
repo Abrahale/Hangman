@@ -1,0 +1,215 @@
+/**
+* @Author Abrahale Kiros
+* @Email abrahalekiros@gmail.com
+**/
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <cstdlib>
+#include <vector>
+#include <time.h>
+using namespace std;
+const int h=9,w=7;
+vector<string> readWords(string path,string::size_type n)
+{
+    vector<string> words;
+    string line;
+   ifstream ifs( path );
+   if ( ! ifs.is_open() ) {
+      cout <<" Failed to open" << endl;
+   }
+   else {
+      while(getline(ifs,line))
+      {
+          if(line.length() > n)
+          words.push_back(line);
+      }
+   }
+   return words;
+}
+
+void replaceIt(string &word, int pos)
+{
+
+    if(word.substr(pos,1).compare("_"))
+    {
+      word.replace(pos,1,"_");
+
+    }
+    else
+    {
+        srand(time(0));
+        replaceIt(word,(rand()%word.size()));
+    }
+}
+
+string mask(string word)
+{
+    srand(time(0));
+    string masked_word = word;
+    for(int i=0;i<4;i++)
+    {
+        masked_word.replace(rand()% (word.length()-1),1,"_");
+    }
+    return masked_word;
+}
+void shufflePairs(vector<string> &words, vector<string> &masks)
+{
+    srand(time(0));
+    int f1,f2;
+    string temp1,temp2;
+    for(string::size_type i =0; i<words.size()*10;i++)
+    {
+        f1 = rand() % (words.size()-1);
+        f2 = rand() % (words.size()-1);
+
+        temp1 = words[f1];
+        temp2 = masks[f1];
+
+        words[f1] = words[f2];
+        masks[f1] = masks[f2];
+        words[f2] = temp1;
+        masks[f2] = temp2;
+    }
+}
+int match(string word, string &mask, string guess)
+{
+    char c = '_';
+    int pos[4]={0,0,0,0};
+    size_t found = mask.find(c);
+    if (found != string::npos)
+        pos[0] = found;
+    for(int i=1;i<4;i++)
+    {
+        found = mask.find(c,found + 1);
+        if( found != string::npos)
+         pos[i] = found;
+    }
+    for(int j=0;j <4;j++)
+    {
+        if(word.substr(pos[j],1).compare(guess) == 0)
+        {
+          mask = mask.replace(pos[j],1,guess);
+          return 0;
+        }
+    }
+    return 1;
+
+}
+void recordWords(string path, vector<string> words, vector<string> masks, int k)
+{
+
+  fstream mfile;
+  mfile.open(path,fstream::app);
+    for(int i=0;i<=k;i++)
+    {
+        string w,m;
+        w = words.at(i);
+        m = masks.at(i);
+        mfile << w << "\t"<< m<<endl;
+    }
+  mfile.close();
+    //theres nothing to  return!
+}
+void setImage(char image[][w])
+{
+    for(int i=0;i<9;i++)
+    {
+        for(int j=0;j<7;j++)
+        {
+            image[i][j]=' ';
+        }
+    }
+    image[0][0]='_';image[0][1]='_';image[0][2]='_';image[0][3]='_';image[1][3]='|';image[0][4]='_';image[0][5]='_';image[0][6]='_';image[0][7]='_';//image[0][8]='_';
+    image[1][0]='|';
+    image[2][0]='|';
+    image[3][0]='|';
+    image[4][0]='|';
+    image[5][0]='|';
+    image[6][0]='-';image[6][1]='-';image[6][2]='-';image[6][3]='-';image[6][4]='-';image[6][5]='-';image[6][6]='-';//image[6][7]='_';image[6][8]='_';
+}
+string hangmanString(char image[][w], int count)
+{
+
+     switch(count)
+            {
+                case 0: image[2][3] = ' ';image[3][3] = ' ';image[4][2] = ' ';image[4][4] = ' ';image[5][3] = ' ';image[6][2] = ' ';image[6][4] = ' ';break;
+                case 1: image[2][3] ='O';break;
+                case 2: image[3][3] = '|';break;
+                case 3: image[4][2] = '-';break;
+                case 4: image[4][4] = '-';break;
+                case 5: image[5][3] = '|';break;
+                case 6: image[6][2] = '/';break;
+                case 7: image[6][4] = '\\';break;
+
+            }
+    string newImage="";
+    for(int i=0;i<9;i++)
+    {
+        for(int j=0;j<7;j++)
+        {
+           newImage+=image[i][j];
+        }
+        newImage+="\n";
+    }
+
+    return newImage;
+}
+int main(){
+srand(time(0));
+string wordsPath = "pathtest.txt";
+string pairsPath = "writingToFile.txt";
+ vector<string> words = readWords(wordsPath,6);
+ vector<string> masks;
+ for(string::size_type i=0;i<words.size();i++)
+ masks.push_back(mask(words[i]));
+ shufflePairs(words,masks);
+ char image[h][w];
+ setImage(image);
+ int c=0,k=0;
+ string word = words[k];
+ string mask = masks[k];
+ cout<<"========================================================================"<<endl;
+ cout<<"\t\t\tWelcome to hangman game"<<endl;
+ cout<<"========================================================================"<<endl;
+ while(true)
+ {
+     cout<<hangmanString(image,c);
+     cout<<mask<<"\t\nyour guess: "<<endl;
+     string q;
+     cin >> q;
+     if(q.compare(".")==0)
+     {
+         recordWords(pairsPath,words,masks,k);
+         break;
+     }
+     else
+     {
+         int msk = match(word,mask,q);
+         if(msk == 0)
+         {
+            if(mask == word)
+            {
+                 cout<<hangmanString(image,c);
+                 cout<<"Yes, the word is "<<word<<"."<<endl;
+                 cout << "Here is another word."<<endl;
+                 c=0;
+                 word = words[++k];
+                 mask = masks[k];
+            }
+         }
+         else
+         {
+            c++;
+             if(c==7){
+                 cout<<hangmanString(image,c);
+                 cout<<"The word was "<<word<<endl;
+                 cout<<"Play Again" << endl;
+                 c=0;
+                 word = words[++k];
+                 mask = masks[k];
+            }
+         }
+     }
+ }
+}
